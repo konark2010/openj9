@@ -155,7 +155,10 @@ createDirectory(struct J9PortLibrary *portLibrary, const char *pathname, uintptr
 			J9SH_MAXPATH)
 		) {
 			if (0 == strncmp(pathname, homeDir, strlen(homeDir))) {
-				usingUserHome = TRUE;
+				char next = pathname[homeLen];
+				if ((next == '\0') || (next == DIR_SEPARATOR)) {
+					usingUserHome = TRUE;
+				}
 			}
 		}
 	}
