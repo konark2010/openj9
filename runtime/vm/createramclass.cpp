@@ -2044,7 +2044,7 @@ loadFlattenableFieldClasses(J9VMThread *currentThread, J9ClassLoader *classLoade
 						 * Static fields will be checked during class preparation.
 						 */
 						if (!J9ROMCLASS_IS_VALUE(valueROMClass)) {
-							setCurrentExceptionForBadClass(currentThread, J9ROMCLASS_CLASSNAME(romClass), J9VMCONSTANTPOOL_JAVALANGINCOMPATIBLECLASSCHANGEERROR,
+							setCurrentExceptionForBadClass(currentThread, J9ROMCLASS_CLASSNAME(romClass), J9VMCONSTANTPOOL_JAVALANGCLASSFORMATERROR,
 								J9NLS_VM_NULLRESTRICTED_MUST_BE_IN_VALUE_CLASS);
 						}
 
