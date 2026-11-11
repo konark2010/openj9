@@ -6754,6 +6754,11 @@ void TR_J9ByteCodeIlGenerator::storeInstance(int32_t cpIndex)
     if (owningMethod->isFieldNullRestricted(comp(), cpIndex, false /* isStatic */, true /* isStore */)) {
         if (!isFieldResolved(comp(), owningMethod, cpIndex, true)) {
             abortForUnresolvedValueTypeOp("putfield", "field");
+        } else if (!_stack->top()->isNonNull() && !comp()->compileRelocatableCode()) {
+            // The value may be null. A plain NULLCHK on the value would throw an NPE without a message, which cannot
+            // be told apart from a null receiver. The runtime helper throws an NPE that names the null-restricted
+            // field when a null is stored into it.
+            return storeFlattenableInstanceWithHelper(cpIndex);
         } else if (owningMethod->isFieldFlattened(comp(), cpIndex, false /* isStatic */)) {
             return comp()->getOption(TR_UseFlattenedFieldRuntimeHelpers) ? storeFlattenableInstanceWithHelper(cpIndex)
                                                                          : storeFlattenableInstance(cpIndex);

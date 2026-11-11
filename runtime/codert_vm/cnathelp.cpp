@@ -912,12 +912,34 @@ old_slow_jitPutFlattenableField(J9VMThread *currentThread)
 	SLOW_JIT_HELPER_PROLOGUE();
 	void *rc = NULL;
 
+	J9RAMFieldRef *cpEntry = (J9RAMFieldRef *)currentThread->floatTemp1;
+	j9object_t receiver = (j9object_t)currentThread->floatTemp2;
+
 	buildJITResolveFrameForRuntimeHelper(currentThread, parmCount);
 #if defined(J9VM_OPT_VALHALLA_FLATTENABLE_VALUE_TYPES)
-	if (NULL != currentThread->floatTemp2) {
-		rc = setCurrentExceptionNLSFromJIT(
-				currentThread, J9VMCONSTANTPOOL_JAVALANGNULLPOINTEREXCEPTION,
-				J9NLS_VM_CANNOT_STORE_NULL_IN_NULL_RESTRICTED_FIELD);
+	if (NULL != receiver) {
+		/* The receiver is non-null, so the NPE is due to storing null into a null-restricted field.
+		 * Find the field name via the constant pool of the method that contains the putfield.
+		 */
+		J9JavaVM *vm = currentThread->javaVM;
+		J9StackWalkState *walkState = currentThread->stackWalkState;
+		walkState->walkThread = currentThread;
+		walkState->skipCount = 0;
+		walkState->flags = J9_STACKWALK_VISIBLE_ONLY | J9_STACKWALK_COUNT_SPECIFIED;
+		walkState->maxFrames = 1;
+		vm->walkStackFrames(currentThread, walkState);
+
+		J9ConstantPool *ramConstantPool = J9_CP_FROM_METHOD(walkState->method);
+		UDATA cpIndex = cpEntry - (J9RAMFieldRef *)ramConstantPool;
+		J9ROMFieldRef *romFieldRef = (J9ROMFieldRef *)(J9_ROM_CP_FROM_ROM_CLASS(ramConstantPool->ramClass->romClass) + cpIndex);
+		J9UTF8 *fieldName = J9ROMNAMEANDSIGNATURE_NAME(J9ROMFIELDREF_NAMEANDSIGNATURE(romFieldRef));
+
+		TIDY_BEFORE_THROW();
+		vm->internalVMFunctions->setCurrentExceptionNLSWithArgs(
+				currentThread, J9NLS_VM_CANNOT_STORE_NULL_IN_NULL_RESTRICTED_FIELD,
+				J9VMCONSTANTPOOL_JAVALANGNULLPOINTEREXCEPTION,
+				J9UTF8_LENGTH(fieldName), J9UTF8_DATA(fieldName));
+		rc = J9_JITHELPER_ACTION_THROW;
 	} else
 #endif /* defined(J9VM_OPT_VALHALLA_FLATTENABLE_VALUE_TYPES) */
 	{
